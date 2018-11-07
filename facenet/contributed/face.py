@@ -42,8 +42,8 @@ import facenet
 
 
 gpu_memory_fraction = 0.3
-facenet_model_checkpoint = os.path.dirname(__file__) + "/../model_checkpoints/20170512-110547"
-classifier_model = os.path.dirname(__file__) + "/../model_checkpoints/my_classifier_1.pkl"
+facenet_model_checkpoint = os.path.dirname(__file__) + "/../models/20180408-102900"
+classifier_model = os.path.dirname(__file__) + "/../pkl/my.pkl"
 debug = False
 
 
@@ -92,7 +92,13 @@ class Identifier:
         if face.embedding is not None:
             predictions = self.model.predict_proba([face.embedding])
             best_class_indices = np.argmax(predictions, axis=1)
-            return self.class_names[best_class_indices[0]]
+            best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
+
+            #print('%s: %.3f' % (self.class_names[best_class_indices[0]], best_class_probabilities[0]))
+            if best_class_probabilities[0] > 0.5:
+                return "%s %.3f" % (self.class_names[best_class_indices[0]], best_class_probabilities[0])
+            else:
+                return "unknown"
 
 
 class Encoder:
