@@ -57,6 +57,10 @@ def main(args):
             
             nrof_images = len(args.image_files)
 
+            print('embeddings:')
+            for i in range(nrof_images):
+                print(emb[i,:])
+
             print('Images:')
             for i in range(nrof_images):
                 print('%1d: %s' % (i, args.image_files[i]))
@@ -75,6 +79,9 @@ def main(args):
                     print('  %1.4f  ' % dist, end='')
                 print('')
             
+        writer=tf.summary.FileWriter("./log/facenet",tf.get_default_graph())
+        writer.close()
+
             
 def load_and_align_data(image_paths, image_size, margin, gpu_memory_fraction):
 
@@ -89,6 +96,9 @@ def load_and_align_data(image_paths, image_size, margin, gpu_memory_fraction):
         with sess.as_default():
             pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
   
+        writer=tf.summary.FileWriter("./log/mtcnn",tf.get_default_graph())
+        writer.close()
+
     tmp_image_paths=copy.copy(image_paths)
     img_list = []
     for image in tmp_image_paths:
@@ -99,6 +109,8 @@ def load_and_align_data(image_paths, image_size, margin, gpu_memory_fraction):
           image_paths.remove(image)
           print("can't detect face, remove ", image)
           continue
+        print('bounding_boxes:')
+        print(bounding_boxes)
         det = np.squeeze(bounding_boxes[0,0:4])
         bb = np.zeros(4, dtype=np.int32)
         bb[0] = np.maximum(det[0]-margin/2, 0)
