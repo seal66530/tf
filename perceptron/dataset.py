@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*- 
+
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -5,6 +7,7 @@ import sys
 
 from numpy.random import RandomState
 
+#生成线性可分的测试集
 def generate_linear_dataset(rdm, class_num, data_num, center_points, noise):
     print("class_num: %s" % class_num)
     print("data_num: %s" % data_num)
@@ -21,6 +24,7 @@ def generate_linear_dataset(rdm, class_num, data_num, center_points, noise):
 
     return all_nps
 
+#生成圆环形状的测试集
 def generate_circle_dataset(rdm, class_num, data_num, radius_limit, noise):
     print("class_num: %s" % class_num)
     print("data_num: %s" % data_num)
@@ -40,6 +44,7 @@ def generate_circle_dataset(rdm, class_num, data_num, radius_limit, noise):
 
     return all_nps
 
+#生成异或形状的测试集
 def generate_xor_dataset(rdm, class_num, data_num, center_points, noise):
     print("class_num: %s" % class_num)
     print("data_num: %s" % data_num)
@@ -62,6 +67,7 @@ def generate_xor_dataset(rdm, class_num, data_num, center_points, noise):
 
     return all_nps
 
+#生成螺线形状的测试集
 def generate_screw_dataset(rdm, class_num, data_num, screw_a_b, noise):
     print("class_num: %s" % class_num)
     print("data_num: %s" % data_num)
@@ -80,6 +86,7 @@ def generate_screw_dataset(rdm, class_num, data_num, screw_a_b, noise):
 
     return all_nps
 
+#绘图
 def draw_dataset(dataset):
     for np in dataset:
         X=np[:,0]
@@ -100,17 +107,17 @@ def main(args):
         return
 
     if args.dataset_type == 'linear':
-        dataset = generate_linear_dataset(rdm, args.class_num, args.data_num, args.linear_center_points, args.noise)
+        ds = generate_linear_dataset(rdm, args.class_num, args.data_num, args.linear_center_points, args.noise)
     elif args.dataset_type == 'circle':
-        dataset = generate_circle_dataset(rdm, args.class_num, args.data_num, args.circle_radius_limit, args.noise)
+        ds = generate_circle_dataset(rdm, args.class_num, args.data_num, args.circle_radius_limit, args.noise)
     elif args.dataset_type == 'xor':
-        dataset = generate_xor_dataset(rdm, args.class_num, args.data_num, args.xor_center_points, args.noise)
+        ds = generate_xor_dataset(rdm, args.class_num, args.data_num, args.xor_center_points, args.noise)
     elif args.dataset_type == 'screw':
-        dataset = generate_screw_dataset(rdm, args.class_num, args.data_num, args.screw_a_b, args.noise)
+        ds = generate_screw_dataset(rdm, args.class_num, args.data_num, args.screw_a_b, args.noise)
     else:
         pass
 
-    draw_dataset(dataset)
+    draw_dataset(ds)
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
