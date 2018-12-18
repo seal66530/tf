@@ -8,13 +8,30 @@ import sys
 import dataset
 from numpy.random import RandomState
 
+#生成网格数据
+def get_meshgrid(low, high, scale):
+    x1 = np.arange(low, high, scale)
+    x2 = np.arange(low, high, scale)
+    grid_x1,grid_x2 = np.meshgrid(x1, x2)
+
+    shape = grid_x1.shape
+
+    x1_np = grid_x1.reshape((shape[0]*shape[1],1))
+    x2_np = grid_x2.reshape((shape[0]*shape[1],1))
+    x_np = np.hstack([x1_np, x2_np])
+    return grid_x1, grid_x2, x_np
+
 #由dataset生成输入张量
 def get_input_from_dataset(ds):
 
     input_np = np.concatenate(ds)
     label_list = list()
     for i in range(len(ds)):
-        label_list.append(np.full((ds[i].shape[0],1),i))
+        if i == 0:
+            label = 1
+        else:
+            label = -1
+        label_list.append(np.full((ds[i].shape[0],1),label))
     #数组拼接
     label_np = np.concatenate(label_list)
 
@@ -27,8 +44,32 @@ def get_input_from_dataset(ds):
     #分割数据和标记
     return np.hsplit(all_np, [-1])
     
-def inference(input_tensor, nn_size):
-    pass
+def get_full_connection_variable(depth, shape):
+    #print depth,shape,"layer"+str(depth)
+
+    #reuse 是否复用命名
+    with tf.variable_scope("layer"+str(depth), reuse=tf.AUTO_REUSE):
+        weights = tf.get_variable("weights", shape, initializer = tf.truncated_normal_initializer(stddev=0.1))
+        biases = tf.get_variable("biases", shape[1], initializer = tf.constant_initializer(0.1))
+        return weights, biases
+
+def inference(input_tensor, nn_shape):
+    output_tensor = input_tensor
+    for i,v in enumerate(nn_shape[:-1]):
+        w, b = get_full_connection_variable(i, nn_shape[i:i+2])
+        output_tensor = tf.sign(tf.matmul(output_tensor, w) + b)
+
+    return output_tensor
+
+def calc_err(x, y, y_):
+    return tf.reduce_sum(tf.where(tf.equal(y,y_), tf.zeros_like(y), tf.ones_like(y)))
+
+def calc_loss(x, y, y_, nn_shape):
+    #y_loss = tf.ones_like(y)
+    #for i,v in enumerate(nn_shape[:-1]):
+    #    w, b = get_full_connection_variable(i, nn_shape[i:i+2])
+    #    y_loss = tf.matmul(y,tf.matmul(x, w) + b)
+    return tf.reduce_sum(tf.where(tf.equal(y,y_), tf.zeros_like(y), tf.ones_like(y)))
 
 def main(args):
     rdm = RandomState(args.random_seed)
@@ -46,15 +87,40 @@ def main(args):
 
     input_np, label_np = get_input_from_dataset(ds)
     x = tf.placeholder(tf.float32, shape=(None,2), name="x-input")
-    y = tf.placeholder(tf.float32, shape=(None,1),name="y-input")
-    #dataset.draw_dataset(ds)
+    y_ = tf.placeholder(tf.float32, shape=(None,1),name="y-input")
 
-    #loss = tf.Variable(x, name="loss")
+    #计算输出
+    y = inference(x, args.nn_shape)
+
+    #计算error
+    err = calc_err(x,y,y_)
+
+    #计算loss
+    loss = calc_loss(x,y,y_,args.nn_shape)
+
+    #计算等高线
+    grid_x = tf.placeholder(tf.float32, shape=(None,2), name="grid-x-input")
+    grid_x1, grid_x2, grid_input_np = get_meshgrid(args.mashgrid_range[0], args.mashgrid_range[1], args.mashgrid_range[2])
+    grid_y = inference(grid_x, args.nn_shape)
 
     with tf.Session() as sess:
-        init_op = tf.global_variables_initializer()
-        sess.run(init_op)
-        #print sess.run(loss, feed_dict={x:input_np, y:label_np})
+        tf.global_variables_initializer().run()
+
+        y_np,l_np,err_c, loss_c = sess.run([y,y_,err,loss], feed_dict={x:input_np, y_:label_np})
+        #print y_np
+        #print l_np
+        print err_c
+        print loss_c
+
+        #绘制等高线
+        grid_y_np = sess.run(grid_y, feed_dict={grid_x:grid_input_np})
+        grid_y = grid_y_np.reshape(grid_x1.shape)
+        dataset.draw_contourf(grid_x1, grid_x2, grid_y)
+
+        #绘制散点图
+        dataset.draw_dataset(ds)
+        dataset.draw_show()
+
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
@@ -74,8 +140,10 @@ def parse_arguments(argv):
     parser.add_argument('--screw_a_b', type=int, nargs="+",
         help='screw a b. [a1,b1,a2,b2...]', default=[1,1,-1,-1])
     parser.add_argument('--noise', type=int,
-        help='data noise.', default='3')
-    parser.add_argument('--nn_size', type=int, nargs="+",
+        help='data noise.', default='5')
+    parser.add_argument('--mashgrid_range', type=float, nargs="+",
+        help='mashgrid range.', default=[-15.0,15.0, 0.01])
+    parser.add_argument('--nn_shape', type=int, nargs="+",
         help='full connect neural network.', default=[2,1])
     parser.add_argument('--random_seed', type=int,
         help='random seed.', default='0')

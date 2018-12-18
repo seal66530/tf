@@ -88,15 +88,37 @@ def generate_screw_dataset(rdm, class_num, data_num, screw_a_b, noise):
 
 #绘图
 def draw_dataset(dataset):
+    colors = [ 'r', 'b', 'g' ]
+    i = 0
+
     for np in dataset:
         X=np[:,0]
         Y=np[:,1]
-        plt.scatter(X,Y, marker='o')
+        plt.scatter(X,Y, marker='o', c=colors[i])
+        i=i+1
 
-    #plt.xlim(-15,15)
-    #plt.ylim(-15,15)
+    plt.xlim(-15,15)
+    plt.ylim(-15,15)
     plt.axis('equal')
     plt.grid()
+
+def draw_contourf(x, y, f):
+    plt.contourf(x, y, f, 0, cmap = plt.cm.cool)
+
+    plt.xlim(-15,15)
+    plt.ylim(-15,15)
+    plt.axis('equal')
+    plt.grid()
+
+def draw_contour(x, y, f):
+    plt.contour(x, y, f, 0, cmap = plt.cm.cool)
+
+    plt.xlim(-15,15)
+    plt.ylim(-15,15)
+    plt.axis('equal')
+    plt.grid()
+
+def draw_show():
     plt.show()
 
 def main(args):
@@ -118,6 +140,7 @@ def main(args):
         pass
 
     draw_dataset(ds)
+    draw_show()
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
