@@ -102,24 +102,41 @@ def draw_dataset(dataset):
     plt.axis('equal')
     plt.grid()
 
-def draw_contourf(x, y, f):
+def draw_contourf(x, y, f, text=""):
     plt.contourf(x, y, f, 0, cmap = plt.cm.cool)
 
     plt.xlim(-15,15)
     plt.ylim(-15,15)
     plt.axis('equal')
     plt.grid()
+    plt.text(15,16,text, fontsize=12)
+    #plt.figure(figsize=(8,8))
 
-def draw_contour(x, y, f):
+def draw_contour(x, y, f,text=""):
     plt.contour(x, y, f, 0, cmap = plt.cm.cool)
 
     plt.xlim(-15,15)
     plt.ylim(-15,15)
     plt.axis('equal')
     plt.grid()
+    plt.text(15,16,text, fontsize=12)
+    #plt.figure(figsize=(10,10))
+
+def draw_pause(sec):
+    plt.pause(sec)
 
 def draw_show():
     plt.show()
+
+def draw_ion():
+    plt.ion()
+
+def draw_ioff():
+    plt.ioff()
+
+def draw_clear():
+    plt.cla()
+    plt.clf()
 
 def main(args):
     rdm = RandomState(args.random_seed)
