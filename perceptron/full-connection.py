@@ -68,9 +68,8 @@ def inference(input_tensor, nn_shape):
 def calc_err(x, y, y_):
     return tf.reduce_sum(tf.where(tf.equal(y,y_), tf.zeros_like(y), tf.ones_like(y)))
 
-def calc_loss(y_inf, y_):
-
-    return tf.reduce_sum(y_)
+def calc_loss(y_inf, y__softmax):
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y__softmax, logits=y_inf))
 
 def main(args):
     rdm = RandomState(args.random_seed)
@@ -87,9 +86,15 @@ def main(args):
         pass
 
     input_np, label_np = get_input_from_dataset(ds)
+    label_softmax_np = np.zeros((label_np.shape[0],2), dtype=float)
+    #print label_np.shape[0]
+    for i in range(label_np.shape[0]):
+        j = label_np[i][0]
+        label_softmax_np[i][int(j)] = 1
 
     x = tf.placeholder(tf.float32, shape=(None,2), name="x-input")
     y_ = tf.placeholder(tf.float32, shape=(None,1),name="y-input")
+    y__softmax = tf.placeholder(tf.float32, shape=(None,2),name="y-softmax-input")
 
     #得到权值
     #wx, bx = get_full_connection_variable(0, (2,1))
@@ -102,7 +107,7 @@ def main(args):
     err = calc_err(x,y,y_)
 
     #计算loss
-    loss = calc_loss(y_inf,y_)
+    loss = calc_loss(y_inf, y__softmax)
 
     #计算等高线
     grid_x = tf.placeholder(tf.float32, shape=(None,2), name="grid-x-input")
@@ -112,10 +117,11 @@ def main(args):
 
     #开始训练
     global_step = tf.Variable(0, trainable=False)
-    #train_step = tf.train.GradientDescentOptimizer(args.learning_rate).minimize(loss, global_step=global_step)
+    train_step = tf.train.GradientDescentOptimizer(args.learning_rate).minimize(loss, global_step=global_step)
 
 
     old_loss_c = -1
+    old_err_c = -1
 
     with tf.Session() as sess:
         tf.global_variables_initializer().run()
@@ -123,15 +129,15 @@ def main(args):
         #开启交互式
         dataset.draw_ion()
         for i in range(args.train_num):
-            y_np, l_np, err_c, loss_c = sess.run([y, y_, err, loss], feed_dict={x:input_np, y_:label_np})
+            y_np, l_np, err_c, loss_c = sess.run([y, y_, err, loss], feed_dict={x:input_np, y_:label_np, y__softmax: label_softmax_np})
             print err_c, loss_c
-            print y_np.shape
-            print l_np.shape
+            #print y_np.shape
+            #print l_np.shape
 
             #wx_np, bx_np = sess.run([wx, bx])
             #print wx_np, bx_np
-            #'''
-            if abs(old_loss_c - loss_c) > 1 or err_c == 0:
+
+            if abs(old_err_c - err_c) != 0 or (i % 1000 == 0) or err_c == 0:
                 dataset.draw_clear()
                 #绘制等高线
                 grid_y_np = sess.run(grid_y, feed_dict={grid_x:grid_input_np})
@@ -144,15 +150,16 @@ def main(args):
 
                 #绘制散点图
                 dataset.draw_dataset(ds, reverse=True)
-                dataset.draw_pause(0.1)
-            #'''            
-            #old_loss_c = loss_c
+                dataset.draw_pause(0.1)     
+                      
+            old_err_c = err_c
+            old_loss_c = loss_c
 
             #训练
-            #if err_c == 0:
-            #    break
-            #else:
-            #    sess.run(train_step, feed_dict={x:input_np, y_:label_np})
+            if err_c == 0:
+                break
+            else:
+                sess.run(train_step, feed_dict={x:input_np, y_:label_np, y__softmax: label_softmax_np})
 
         #关闭交互式
         dataset.draw_ioff()
@@ -163,7 +170,7 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--dataset_type', type=str, 
-        help='dataset type: linear circle xor screw', default='linear')
+        help='dataset type: linear circle xor screw', default='circle')
     parser.add_argument('--class_num', type=int, 
         help='classification number.', default='2')
     parser.add_argument('--data_num', type=int, nargs="+",
@@ -187,7 +194,7 @@ def parse_arguments(argv):
     parser.add_argument('--learning_rate', type=float,
         help='learning rate.', default='0.001')
     parser.add_argument('--train_num', type=int,
-        help='train num.', default='1')
+        help='train num.', default='100000')
 
     return parser.parse_args(argv)
 

@@ -131,7 +131,7 @@ def main(args):
             #wx_np, bx_np = sess.run([wx, bx])
             #print wx_np, bx_np
 
-            if abs(old_loss_c - loss_c) > 1 or err_c == 0:
+            if abs(old_loss_c - loss_c) > 1 or (i % 500 == 0) or err_c == 0:
                 dataset.draw_clear()
                 #绘制等高线
                 grid_y_np = sess.run(grid_y, feed_dict={grid_x:grid_input_np})
