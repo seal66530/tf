@@ -87,8 +87,11 @@ def generate_screw_dataset(rdm, class_num, data_num, screw_a_b, noise):
     return all_nps
 
 #绘图
-def draw_dataset(dataset):
-    colors = [ 'r', 'b', 'g' ]
+def draw_dataset(dataset, reverse=False):
+    colors = [ 'r', 'b']
+    if reverse:
+        colors.reverse()
+
     i = 0
 
     for np in dataset:
@@ -102,8 +105,8 @@ def draw_dataset(dataset):
     plt.axis('equal')
     plt.grid()
 
-def draw_contourf(x, y, f, text=""):
-    plt.contourf(x, y, f, 0, cmap = plt.cm.cool)
+def draw_contourf(x, y, f, v, text=""):
+    plt.contourf(x, y, f, v, cmap = plt.cm.cool)
 
     plt.xlim(-15,15)
     plt.ylim(-15,15)
@@ -112,8 +115,8 @@ def draw_contourf(x, y, f, text=""):
     plt.text(15,16,text, fontsize=12)
     #plt.figure(figsize=(8,8))
 
-def draw_contour(x, y, f,text=""):
-    plt.contour(x, y, f, 0, cmap = plt.cm.cool)
+def draw_contour(x, y, f, v, text=""):
+    plt.contour(x, y, f, v, cmap = plt.cm.cool)
 
     plt.xlim(-15,15)
     plt.ylim(-15,15)

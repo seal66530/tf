@@ -28,11 +28,7 @@ def get_input_from_dataset(ds):
     input_np = np.concatenate(ds)
     label_list = list()
     for i in range(len(ds)):
-        if i == 0:
-            label = 1
-        else:
-            label = -1
-        label_list.append(np.full((ds[i].shape[0],1),label))
+        label_list.append(np.full((ds[i].shape[0],1),i))
     #数组拼接
     label_np = np.concatenate(label_list)
 
@@ -51,30 +47,30 @@ def get_full_connection_variable(depth, shape):
     #reuse 是否复用命名
     with tf.variable_scope("layer"+str(depth), reuse=tf.AUTO_REUSE):
         weights = tf.get_variable("weights", shape, initializer = tf.truncated_normal_initializer(0, stddev=1))
-        biases = tf.get_variable("biases", shape[1], initializer = tf.random_uniform_initializer(-8,8))
+        biases = tf.get_variable("biases", shape[1], initializer = tf.random_uniform_initializer(-1,1))
         return weights, biases
 
 def inference(input_tensor, nn_shape):
     output_tensor = input_tensor
-    for i,v in enumerate(nn_shape[:-1]):
+
+    #隐藏层使用relu激活
+    for i,v in enumerate(nn_shape[:-2]):
         w, b = get_full_connection_variable(i, nn_shape[i:i+2])
-        output_tensor = tf.sign(tf.matmul(output_tensor, w) + b)
+        output_tensor = tf.nn.relu(tf.matmul(output_tensor, w) + b)
+
+    #最后一层不使用激活函数
+    i=i+1
+    w, b = get_full_connection_variable(i, nn_shape[i:i+2])
+    output_tensor = tf.matmul(output_tensor, w) + b
 
     return output_tensor
 
 def calc_err(x, y, y_):
     return tf.reduce_sum(tf.where(tf.equal(y,y_), tf.zeros_like(y), tf.ones_like(y)))
 
-def calc_loss(x, y, y_, nn_shape):
-    value = x
-    for i,v in enumerate(nn_shape[:-1]):
-        w, b = get_full_connection_variable(i, nn_shape[i:i+2])
-        value = tf.matmul(value, w) + b
+def calc_loss(y_inf, y_):
 
-    p_loss = tf.zeros_like(y_) - tf.multiply(value,y_)
-    a1 = tf.reduce_sum(tf.where(tf.equal(y,y_), tf.zeros_like(y_), p_loss))
-    a2 = tf.sqrt(tf.reduce_sum(tf.square(w)))
-    return a1 / a2
+    return tf.reduce_sum(y_)
 
 def main(args):
     rdm = RandomState(args.random_seed)
@@ -91,6 +87,7 @@ def main(args):
         pass
 
     input_np, label_np = get_input_from_dataset(ds)
+
     x = tf.placeholder(tf.float32, shape=(None,2), name="x-input")
     y_ = tf.placeholder(tf.float32, shape=(None,1),name="y-input")
 
@@ -98,23 +95,24 @@ def main(args):
     #wx, bx = get_full_connection_variable(0, (2,1))
 
     #计算输出
-    y = inference(x, args.nn_shape)
+    y_inf = inference(x, args.nn_shape)
+    y = tf.to_float(tf.expand_dims(tf.argmax(y_inf, axis = 1), 1)) #扩展维度，维度改为(None,1)
 
     #计算error
     err = calc_err(x,y,y_)
 
     #计算loss
-    #loss = calc_err(x,y,y_)
-    loss = calc_loss(x,y,y_,args.nn_shape)
+    loss = calc_loss(y_inf,y_)
 
     #计算等高线
     grid_x = tf.placeholder(tf.float32, shape=(None,2), name="grid-x-input")
     grid_x1, grid_x2, grid_input_np = get_meshgrid(args.mashgrid_range[0], args.mashgrid_range[1], args.mashgrid_range[2])
-    grid_y = inference(grid_x, args.nn_shape)
+    grid_y_inf = inference(grid_x, args.nn_shape)
+    grid_y = tf.to_float(tf.expand_dims(tf.argmax(grid_y_inf, axis = 1), 1))
 
     #开始训练
     global_step = tf.Variable(0, trainable=False)
-    train_step = tf.train.GradientDescentOptimizer(args.learning_rate).minimize(loss, global_step=global_step)
+    #train_step = tf.train.GradientDescentOptimizer(args.learning_rate).minimize(loss, global_step=global_step)
 
 
     old_loss_c = -1
@@ -127,37 +125,34 @@ def main(args):
         for i in range(args.train_num):
             y_np, l_np, err_c, loss_c = sess.run([y, y_, err, loss], feed_dict={x:input_np, y_:label_np})
             print err_c, loss_c
+            print y_np.shape
+            print l_np.shape
 
             #wx_np, bx_np = sess.run([wx, bx])
             #print wx_np, bx_np
-
+            #'''
             if abs(old_loss_c - loss_c) > 1 or err_c == 0:
                 dataset.draw_clear()
                 #绘制等高线
                 grid_y_np = sess.run(grid_y, feed_dict={grid_x:grid_input_np})
+                print grid_y_np.shape
                 grid_y_np_reshape = grid_y_np.reshape(grid_x1.shape)
                 err_text = "fail: " + str(int(err_c)) + "/" + str(input_np.shape[0])
                 loss_text = "loss: " + str(loss_c)
                 text = err_text + "\n" + loss_text
-                dataset.draw_contourf(grid_x1, grid_x2, grid_y_np_reshape, 0, text)
+                dataset.draw_contourf(grid_x1, grid_x2, grid_y_np_reshape, 1, text)
 
                 #绘制散点图
-                dataset.draw_dataset(ds, reverse=False)
-                #dataset.draw_show()
+                dataset.draw_dataset(ds, reverse=True)
                 dataset.draw_pause(0.1)
-            
-            #if abs(old_loss_c - loss_c) > 0.5:
-            #    dataset.draw_pause(0.1)
-            #else:
-            #    dataset.draw_pause(0.1)
-            old_loss_c = loss_c
-            #dataset.draw_pause(0.1)
+            #'''            
+            #old_loss_c = loss_c
 
             #训练
-            if err_c == 0:
-                break
-            else:
-                sess.run(train_step, feed_dict={x:input_np, y_:label_np})
+            #if err_c == 0:
+            #    break
+            #else:
+            #    sess.run(train_step, feed_dict={x:input_np, y_:label_np})
 
         #关闭交互式
         dataset.draw_ioff()
@@ -186,13 +181,13 @@ def parse_arguments(argv):
     parser.add_argument('--mashgrid_range', type=float, nargs="+",
         help='mashgrid range.', default=[-15.0,15.0, 0.01])
     parser.add_argument('--nn_shape', type=int, nargs="+",
-        help='full connect neural network.', default=[2,1])
+        help='full connect neural network.', default=[2,5,5,2])
     parser.add_argument('--random_seed', type=int,
         help='random seed.', default='0')
     parser.add_argument('--learning_rate', type=float,
         help='learning rate.', default='0.001')
     parser.add_argument('--train_num', type=int,
-        help='train num.', default='10000')
+        help='train num.', default='1')
 
     return parser.parse_args(argv)
 
