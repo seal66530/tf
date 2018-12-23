@@ -33,6 +33,7 @@ import tensorflow as tf
 #from math import floor
 import cv2
 import os
+import matplotlib.pyplot as plt
 
 def layer(op):
     """Decorator for composable network layers."""
@@ -87,6 +88,7 @@ class Network(object):
         for op_name in data_dict:
             with tf.variable_scope(op_name, reuse=True):
                 for param_name, data in iteritems(data_dict[op_name]):
+                    print (op_name+'/'+param_name,data.shape)
                     try:
                         var = tf.get_variable(param_name)
                         session.run(var.assign(data))
@@ -295,6 +297,14 @@ def create_mtcnn(sess, model_path):
     onet_fun = lambda img : sess.run(('onet/conv6-2/conv6-2:0', 'onet/conv6-3/conv6-3:0', 'onet/prob1:0'), feed_dict={'onet/input:0':img})
     return pnet_fun, rnet_fun, onet_fun
 
+def imshow_rgb(image_np):
+    plt.imshow(image_np)
+    plt.show()
+
+def imshow_grey(image_np):
+    plt.imshow(image_np, cmap ='gray')
+    plt.show()
+
 def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
     """Detects faces in an image, and returns bounding boxes and points for them.
     img: input image
@@ -326,6 +336,10 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
         im_data = (im_data-127.5)*0.0078125
         img_x = np.expand_dims(im_data, 0)
         img_y = np.transpose(img_x, (0,2,1,3))
+
+        print(img_y.shape)
+        #imshow_rgb(img_y[0,:,:,:])
+
         out = pnet(img_y)
         out0 = np.transpose(out[0], (0,2,1,3))
         out1 = np.transpose(out[1], (0,2,1,3))
@@ -339,6 +353,7 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
             total_boxes = np.append(total_boxes, boxes, axis=0)
 
     numbox = total_boxes.shape[0]
+    #print("numbox:"+str(numbox))
     if numbox>0:
         pick = nms(total_boxes.copy(), 0.7, 'Union')
         total_boxes = total_boxes[pick,:]
@@ -352,6 +367,7 @@ def detect_face(img, minsize, pnet, rnet, onet, threshold, factor):
         total_boxes = rerec(total_boxes.copy())
         total_boxes[:,0:4] = np.fix(total_boxes[:,0:4]).astype(np.int32)
         dy, edy, dx, edx, y, ey, x, ex, tmpw, tmph = pad(total_boxes.copy(), w, h)
+        #imshow_rgb(img_y[0,:,:,:])
 
     numbox = total_boxes.shape[0]
     if numbox>0:
